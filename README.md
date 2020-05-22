@@ -1,7 +1,7 @@
 check_mem
 =========
 
-Nagios plugin that measures Linux memory use as reported by the '/proc/meminfo' output.
+Nagios plugin that measures Linux memory use as reported by the '/proc/meminfo' output using ssh access.
 
 A [PNP4Nagios](https://github.com/lingej/pnp4nagios) graph template is include to combine the figures on a single chart.
 
@@ -15,7 +15,7 @@ The changes aim to improve performance (fewer forks) and the PNP4Nagios chart.
 
 Sample install steps below are for CentOS 6.5 and assume you are using nagio with check_nrpe plugin, nrpe, and pnp4nagios.
 
-1) Install and configure nagios, nrpe, and the check_nrpe nagios plugin
+1) Install and configure nagios
 
 2) Install the files for this plugin and chart
 ```
@@ -24,34 +24,37 @@ cp check_mem /usr/lib64/nagios/plugins/
 /sbin/restorecon -v /usr/lib64/nagios/plugins/check_mem
 ```
 
-3) Now add the command to NRPE configuration /etc/nagios/nrpe.config
+3) Now add the command to nagios configuration /etc/nagios/objects/commands.cfg
 ```
-command[check_mem]=/usr/lib64/nagios/plugins/check_mem -w 70 -c 90
+define command {
+        command_name    check_mem_by_ssh;
+        command_line    /usr/lib64/nagios/plugins/check_mem_by_ssh -H $HOSTADDRESS$ -p $ARG1$ -l $ARG2$ -w $ARG3 -c $ARG4$;
+}
 ```
 
-4) Reload NRPE  
+4) Now add the service check to nagios server configuration /etc/nagios/servers/target_server.cfg
+```
+define service{
+        use                             generic-service;
+        host_name                       target_server;
+        service_description             memory;
+        check_command                   check_mem_by_ssh!22!nagios!75!90;
+        check_interval                  4;
+        retry_interval                  1;
+}
+
+```
+
+5) Reload nagios 
 ```  
-service nrpe reload
+service nagios reload
 ```
 
-5) Test manually
+6) Test manually
 ```
-/usr/lib64/nagios/plugins/check_nrpe -H target.host.name -c check_mem
+/usr/lib64/nagios/plugins/check_mem_by_ssh -H 0.0.0.0 -p 22 -l nagios -w 75 -c 90;
 ```
 
-6) Now go configure the service or service template in Nagios and use as required
-```
-	define service {
-			name                            check-nrpe-linux-mem
-			service_description             Check Linux memory
-			use                             generic-service
-			check_command                   check_nrpe!check_mem
-			max_check_attempts              1
-			check_interval                  5
-			retry_interval                  1
-			register                        0
-	}
-```
 
 The pnp4nagios template name assumes you have 
 [pnp4nagios configured with `CUSTOM_TEMPLATE = 1`](http://docs.pnp4nagios.org/pnp-0.6/tpl_custom?s[]=custom),
