@@ -9,9 +9,9 @@ A [PNP4Nagios](https://github.com/lingej/pnp4nagios) graph template is include t
 
 This is plugin is based on one [published on the Nagios Exchange](http://exchange.nagios.org/directory/Plugins/System-Metrics/Memory/check_mem-2Esh/details) by Lukasz Gogolin <lukasz.gogolin@gmail.com>
 This repo is a copy of version 1.1 released 2012-07-22 and modified by @whereisaaron.
-This version 1.4 has contributions by @whereisaaron, @DavidGoodwin, @eacmen.
+This version 1.5 has contributions by @usrzero.
 
-The changes aim to improve performance (fewer forks) and the PNP4Nagios chart.
+The changes brings plugin-less support (check via ssh).
 
 Sample install steps below are for CentOS 6.5 and assume you are using nagio with check_nrpe plugin, nrpe, and pnp4nagios.
 
