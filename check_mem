@@ -51,7 +51,7 @@ while test -n "$1"; do
             ;;
         *)
             echo "Unknown Argument: $1"
-            print_help
+            usage
             exit 3
             ;;
     esac
