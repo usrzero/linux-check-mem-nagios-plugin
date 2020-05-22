@@ -1,40 +1,63 @@
 #!/bin/bash
 
-# check_mem v1.4
+# check_mem v1.5
 #
 # v1.1 Copyright (C) 2012 Lukasz Gogolin (lukasz.gogolin@gmail.com)
 # v1.2 2014 Modified by Aaron Roydhouse (aaron@roydhouse.com)
 # v1.3 2015 Modified by Aaron Roydhouse (aaron@roydhouse.com)
 # v1.4 2018 Modified by @DavidGoodwin, @eacmen, @whereisaaron
+# v1.5 2020 Modified by @usrzero
 
 # Default percentage usage limits
 CRITICAL=90
 WARNING=80
+login='nagios';
 
 usage() {
-    echo "check_mem v1.4"
+    echo "check_mem v1.5"
     echo ""
-    echo "Usage: check_mem -w <warnlevel> -c <critlevel>"
+    echo "Usage: check_mem_by_ssh -H <host> -p <port> -l <ssh_user> -w <warnlevel> -c <critlevel>"
     echo ""
     echo "  'warnlevel' and 'critlevel' are percentage values without a percent sign ('%')"
-    echo "  e.g. check_mem -w 80 -c 90"
+    echo "  e.g. check_mem_by_ssh -H 192.168.21.21 -p 22 -l nagios -w 80 -c 90"
     echo ""
  }
 
-while getopts "w:c:" o; do
-    case "${o}" in
-        c)
-            CRITICAL=$(( ${OPTARG} + 0 ))
+while test -n "$1"; do
+    case "$1" in
+        -H)
+            host=$2
+            shift
             ;;
-        w)
-            WARNING=$(( ${OPTARG} + 0))
+        -p)
+            port=$2
+            shift
+            ;;
+        -l)
+            login=$2
+            shift
+            ;;
+        --help|-h)
+            print_help
+            exit 0
+            ;;
+        -w)
+            WARNING=$2
+            shift
+            ;;
+        -c)
+            CRITICAL=$2
+            shift
             ;;
         *)
-            usage
-            exit 1
+            echo "Unknown Argument: $1"
+            print_help
+            exit 3
             ;;
     esac
+    shift
 done
+
 
 
 if [ $CRITICAL -lt 0 -o $CRITICAL -gt 100 -o $WARNING -lt 0 -o $WARNING -gt 100 -o $WARNING -gt $CRITICAL ]; then
@@ -42,11 +65,27 @@ if [ $CRITICAL -lt 0 -o $CRITICAL -gt 100 -o $WARNING -lt 0 -o $WARNING -gt 100 
     exit 1
 fi
 
+if [[ -z "$host" || -z "$port" ]]; then
+    echo "No Host or Port Specified"
+    usage;
+    exit 3;
+fi
 
-memTotal_k=$(awk '$1~/^MemTotal/{print $2}' /proc/meminfo )
-memFree_k=$(awk '$1~/^MemFree/{print $2}' /proc/meminfo )
-memBuffer_k=$(awk '$1~/^Buffers/{print $2}' /proc/meminfo )
-memCache_k=$(awk '$1~/^Cached/{print $2}' /proc/meminfo )
+ssh_data=$(ssh -o ConnectTimeout=5 -p$port $login@$host 'cat /proc/meminfo' 2>&1);
+ssh_ret=$?;
+
+if [ $ssh_ret != 0 ]; then
+    echo "ERROR: $ssh_data";
+    exit 2;
+fi
+
+
+
+
+memTotal_k=$(echo "$ssh_data" | awk '$1~/^MemTotal/{print $2}')
+memFree_k=$(echo "$ssh_data" | awk '$1~/^MemFree/{print $2}')
+memBuffer_k=$(echo "$ssh_data" | awk '$1~/^Buffers/{print $2}')
+memCache_k=$(echo "$ssh_data" | awk '$1~/^Cached/{print $2}')
 
 memUsed_k=$(( $memTotal_k - $memFree_k - $memBuffer_k - $memCache_k ))
 memUsedPrc=$(( ($memUsed_k * 100) / $memTotal_k ))
